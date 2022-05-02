@@ -1,0 +1,256 @@
+Helm
+===========
+===========================================
+Demo
+===============
+In this tutorial, we are going to install WordPress with MariaDB using the Helm Chart on Kubernetes cluster. With this installation, we are going to see - How we can upgrade as well as rollback the Helm Chart release of WordPress. This complete setup inherited the benefits of the Kubernetes .i.e. scalability and availability.
+
+
+Since we are installing WordPress, so we need to have a database running behind the WordPress application. From the database standpoint, we are going to use MariaDB. Helm chart ships all these components in a single package, so that we need not worry about installing each component separately.
+
+
+To search for all wordpress relates repositories
+helm search hub wordpress
+
+If the output of the above command is too large we can use
+helm search hub wordpress  --max-col-width=0
+
+Ensure that the binami is installed
+-------------------------------------------
+helm repo add bitnami https://charts.bitnami.com/bitnami
+heml repo list
+
+Readme.md
+=================
+This Readme.md contains the installation instructions and it can be viewed using the following command
+
+helm show readme bitnami/wordpress --version 10.0.3
+
+To update the username and password
+vim wordpress-values.yml
+
+wordpressUsername: admin
+wordpressPassword: admin
+wordpressEmail: selenium.saikrishna@gmail.com
+wordpressFirstName: Sai
+wordpressLastName: Krishna
+wordpressBlogName: mywordpress.com
+service: 
+  type: LoadBalancer
+
+Create a new namespace
+kubectl create namespace nswordpress
+
+Versify the namesapce
+kubectl get namespace
+
+Run the below command to install wordpess in the namepsace
+helm install wordpress bitnami/wordpress --values=wordpress-values.yaml --namespace nswordpress --version 10.0.3
+
+
+To see the resources running in a specific namespace
+watch -x kubectl get all --namespace nswordpress
+
+To remove
+kubect uninstall wordpress
+
+
+=======================================================================
+Install prometheus and grafana
+======================================
+
+Use older version of kubernetes (1.19)
+
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add stable https://charts.helm.sh/stable
+helm repo update
+
+helm install prometheus prometheus-community/kube-prometheus-stack
+
+grafana by default runs on clusterip to make to accessable externally change to nodeport
+kubectl patch svc prometheus-grafana -p '{"spec": {"type": "NodePort"}}'
+
+Identify the port used by nodeport and opne firewallrules on gcp
+gcloud compute firewall-rules create firewall5  --allow tcp:31764
+
+Username is admin
+password: prom-operator
+==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-apache
+spec:
+  selector:
+    matchLabels:
+      run: php-apache
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: php-apache
+    spec:
+      containers:
+      - name: php-apache
+        image: k8s.gcr.io/hpa-example
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: 500m
+          requests:
+            cpu: 200m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-apache
+  labels:
+    run: php-apache
+spec:
+  ports:
+  - port: 80
+  selector:
+    run: php-apache
+...
+
+
+kubectl autoscale deployment php-apache --cpu-percent=50 --min=1 --max=10
+
+kubectl get hpa
+
+kubectl run -i --tty load-generator --rm --image=busybox --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://php-apache; done"
+
+
+kubectl get hpa php-apache --watch
+
+==================================================================================
+
+
+Creating a persistant vaolume
+==================================
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: task-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+
+
+Creating a persistent volume claim
+=========================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: task-pv-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+
+
+Creating a pod defintion file to use the pvc
+================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: task-pv-pod
+spec:
+  volumes:
+    - name: task-pv-storage
+      persistentVolumeClaim:
+        claimName: task-pv-claim
+  containers:
+    - name: task-pv-container
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: task-pv-storage
+
+=================================================================
+Statefulsets
+======================
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  clusterIP: None
+  selector:
+    app: mysql
+  ports:
+    - name: tcp
+      protocol: TCP
+      port: 3306
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  replicas: 1
+  serviceName: mysql
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      volumes:
+        - name: task-pv-storage
+          persistentVolumeClaim:
+            claimName: task-pv-claim
+      containers:
+        - name: mysql
+          image: mysql:5.6
+          ports:
+            - name: tpc
+              protocol: TCP
+              containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: intelliqit
+
+          volumeMounts:
+            - name: task-pv-storage
+              mountPath: /var/lib/mysql
+
+==============================================================================
+
+
+
+
+
+
+Rolling update of a deployment
+-------------------------------------
+kubectl set image deployment nginx nginx=nginx:1.9.1
+
+kubectl set resources deployment nginx --limits cpu=200m,memory=512Mi --requests cpu=100m,memory=256Mi
+
+kubectl rollout undo deployments nginx
+
+=============================================================================
+kubectl drain <node name>
+kubectl uncordon <node name>
+
+
+

@@ -1,0 +1,17 @@
+ Vagrant
+=======================
+1 Download and install Oracle Virtual box
+  https://www.virtualbox.org/wiki/Downloads
+
+2 Download and install vagrant
+  https://www.vagrantup.com/downloads
+
+3 Download the vagrantfile and place it in an empty folder
+
+4 Open cmd prompt and chande dir to the empty folder
+  cd path_of_empty_folder_where_vagratfile_is_copied
+
+5 vagrant up
+
+
+ 
