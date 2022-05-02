@@ -1,0 +1,88 @@
+CI-CD Stages
+=========================
+Continuous Download
+===========================
+1 Open the dashboard of jenkins
+2 Click on New item
+3 Enter some item name (Development)
+4 Select Free style project
+5 Go to Source code management
+6 Select Git
+7 Enter the github url where developers have uploaded the code
+  https://github.com/intelliqittrainings/maven.git
+8 Apply--->Save
+
+Continuous Build
+=====================
+1 Open the dashboard of jenkins
+2 Go to the Development job--->Click on Configure
+3 Go to Build section
+4 Click on Add Build step
+5 Click on Invoke top level maven targets
+6 Enter the maven goal as : package
+7 Apply-->Save
+
+==============================================
+Continuous Deployment
+===================================
+1 Open the dashboard of Jenkins
+2 Click on Manage Jenkins
+3 Click on Manage Plugins
+4 Go to the Available section
+5 Search for "Deploy to Contianer" plugin
+6 Click on Install without restart
+7 Go to the dashboard of Jenkins
+8 Go to the dEvelopment job
+9 Click on Configure
+10 Go to Post build actions
+11 Click on Add post build actions
+12 Click on Deploy war/ear to container
+   war/ear file: **/*.war
+   context path: testapp
+   Click on Add container
+   Select tomcat9
+   Enter the tomcat credentials
+   Tomcat url: private_ip_of_qaserver:8080
+13 Apply--->Save
+
+=============================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
